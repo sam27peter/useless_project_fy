@@ -1,103 +1,49 @@
-<img width="1280" height="640" alt="git (1)" src="https://github.com/user-attachments/assets/8920b256-2ba8-4988-b824-5351134eb4bd" />
+# Blink-QR File Transfer
 
+A deliberately over-engineered file transfer system that sends files through a sequence of QR codes.
 
+This project is being developed for **TinkerHub Useless Project 3.0**.
 
-# [Project Name] 🎯
+The idea is simple:
 
+> Turn a file into data → split it into chunks → add error correction → display as multiple QR codes → scan the QR codes → reconstruct the original file.
 
-## Basic Details
-### Team Name: [Name]
+The unnecessary part:
 
+> The final transfer in "Private" mode will use an encryption key derived from an **eye-blinking pattern**.
 
-### Team Members
-- Team Lead: [Name] - [College]
-- Member 2: [Name] - [College]
-- Member 3: [Name] - [College]
+## 🏗️ Project Concept & Architecture
 
-### Project Description
-[2-3 lines about what your project does]
+The transmission pipeline is being built in strict, modular phases to ensure high performance and cross-language compatibility (JavaScript Sender, Python Receiver).
 
-### The Problem (that doesn't exist)
-[What ridiculous problem are you solving?]
+### Sender Pipeline (Current Focus)
 
-### The Solution (that nobody asked for)
-[How are you solving it? Keep it fun!]
+1. **Phase 1 (Input):** Extract raw binary `Uint8Array` from the selected file.
+2. **Phase 2 (Understand):** Generate SHA-256 hash for integrity and apply smart GZIP compression only if beneficial.
+3. **Phase 3 (Coding):** Apply a custom-built Reed-Solomon GF(2^8) engine for error correction (surviving dropped QR frames).
+4. **Phase 4 (Chunking):** Slice data into < 255-byte symbols (200 bytes data + 30 bytes RS parity).
+5. **Phase 5 (Protocol):** _[Pending]_ Wrap symbols in Protocol V1 headers.
+6. **Phase 6 (QR Generation):** _[Pending]_ Render bytes into visual QR canvases.
+7. **Phase 7 (Transmission):** _[Pending]_ Playback QR codes at a controlled FPS.
 
-## Technical Details
-### Technologies/Components Used
-For Software:
-- [Languages used]
-- [Frameworks used]
-- [Libraries used]
-- [Tools used]
+### Future Receiver Pipeline
 
-For Hardware:
-- [List main components]
-- [List specifications]
-- [List tools required]
+- Fast QR detection and decoding via OpenCV (Python).
+- Protocol parsing and Session validation.
+- Reed-Solomon decoding and missing frame recovery.
+- Decompression (if applicable).
+- SHA-256 verification against the reconstructed file.
 
-### Implementation
-For Software:
-# Installation
-[commands]
+## 📂 Project Structure
 
-# Run
-[commands]
-
-### Project Documentation
-For Software:
-
-# Screenshots (Add at least 3)
-![Screenshot1](Add screenshot 1 here with proper name)
-*Add caption explaining what this shows*
-
-![Screenshot2](Add screenshot 2 here with proper name)
-*Add caption explaining what this shows*
-
-![Screenshot3](Add screenshot 3 here with proper name)
-*Add caption explaining what this shows*
-
-# Diagrams
-![Workflow](Add your workflow/architecture diagram here)
-*Add caption explaining your workflow*
-
-For Hardware:
-
-# Schematic & Circuit
-![Circuit](Add your circuit diagram here)
-*Add caption explaining connections*
-
-![Schematic](Add your schematic diagram here)
-*Add caption explaining the schematic*
-
-# Build Photos
-![Components](Add photo of your components here)
-*List out all components shown*
-
-![Build](Add photos of build process here)
-*Explain the build steps*
-
-![Final](Add photo of final product here)
-*Explain the final build*
-
-### Project Demo
-# Video
-[Add your demo video link here]
-*Explain what the video demonstrates*
-
-# Additional Demos
-[Add any extra demo materials/links]
-
-## Team Contributions
-- [Name 1]: [Specific contributions]
-- [Name 2]: [Specific contributions]
-- [Name 3]: [Specific contributions]
-
----
-Made with ❤️ at TinkerHub Useless Projects 
-
-![Static Badge](https://img.shields.io/badge/TinkerHub-24?color=%23000000&link=https%3A%2F%2Fwww.tinkerhub.org%2F)
-![Static Badge](https://img.shields.io/badge/UselessProjects--26-26?link=https%3A%2F%2Ftinkerhub.org%2Fevents%2F1M8ORET9A1%2Fuseless-projects-3.0)
-
-
-
+```text
+useless_project_3.0/
+├── index.html              # Main UI shell
+├── style.css               # Styling and theme
+├── src/
+│   ├── app.js              # UI state and pipeline orchestration
+│   ├── FileProcessor.js    # Binary extraction, Hashing, Compression
+│   ├── CodingEngine.js     # Reed-Solomon GF(2^8) Implementation
+│   └── SymbolCreator.js    # Async chunking and parity generation
+└── README.md
+```
