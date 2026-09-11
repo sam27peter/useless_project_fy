@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blink-QR File Transfer</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 
 <body>
@@ -56,6 +57,7 @@
                 <h1>Send a File</h1>
                 <p>Choose a file to prepare it for QR transmission.</p>
             </div>
+
             <div class="upload-box" id="uploadBox">
                 <div class="upload-icon">↑</div>
                 <h2>Drop your file here</h2>
@@ -65,6 +67,7 @@
                     <input type="file" id="fileInput" hidden>
                 </label>
             </div>
+
             <div class="file-info hidden" id="fileInfo">
                 <div class="file-icon">📄</div>
                 <div class="file-details">
@@ -74,7 +77,6 @@
                 <button id="removeFile" class="remove-button">×</button>
             </div>
 
-            <!-- Transmission Settings -->
             <div class="transmission-settings hidden" id="transmissionSettings">
                 <h3>Transmission Mode</h3>
                 <div class="radio-group">
@@ -99,15 +101,8 @@
                     <label class="radio-card">
                         <input type="radio" name="codingMode" value="rs" checked>
                         <div class="radio-content">
-                            <strong>Reed-Solomon (Standard)</strong>
-                            <span>Adds recovery symbols. Survives dropped QR frames.</span>
-                        </div>
-                    </label>
-                    <label class="radio-card" style="opacity: 0.5; cursor: not-allowed;">
-                        <input type="radio" name="codingMode" value="raptorq" disabled>
-                        <div class="radio-content">
-                            <strong>RaptorQ (Fountain Code)</strong>
-                            <span>Coming later. Advanced limitless recovery.</span>
+                            <strong>Reed-Solomon GF(2^8)</strong>
+                            <span>Mathematically aligned with Python reedsolo.</span>
                         </div>
                     </label>
                 </div>
@@ -116,9 +111,57 @@
             <button class="primary-button disabled" id="prepareButton" disabled>
                 Prepare Transmission →
             </button>
+
             <p class="coming-soon" id="statusText">
-                Phase 1, 2 & 3 ready: Select a file to begin.
+                Phase 1-6 ready: Select a file to begin.
             </p>
+
+            <div class="stats-window hidden" id="statsWindow">
+                <h3>Pipeline Analytics</h3>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span>Original Size</span>
+                        <strong id="statOriginalSize">-</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span>Prepared Size</span>
+                        <strong id="statPreparedSize">-</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span>RS Chunking</span>
+                        <strong id="statChunks">-</strong>
+                    </div>
+                    <div class="stat-box highlight-box">
+                        <span>Total QR Frames</span>
+                        <strong id="statFrames">-</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NEW: Phase 7 Playback Zone -->
+            <div class="playback-zone hidden" id="playbackZone">
+                <div class="qr-display-container">
+                    <img id="qrDisplay" src="" alt="QR Transmission Frame" />
+                </div>
+
+                <div class="playback-metrics">
+                    <div class="metric">
+                        <span>FPS Target: <strong id="uiFpsTarget">15</strong></span>
+                        <span>Actual: <strong id="uiFpsActual" class="success-text">0</strong></span>
+                    </div>
+                    <div class="metric">
+                        <span>Frame</span>
+                        <strong id="uiFrameProgress">0 / 0</strong>
+                    </div>
+                </div>
+
+                <div class="playback-controls">
+                    <button class="control-btn" id="btnPlay">▶ Play</button>
+                    <button class="control-btn" id="btnPause">⏸ Pause</button>
+                    <button class="control-btn danger" id="btnStop">⏹ Stop</button>
+                </div>
+            </div>
+
         </section>
     </main>
 

@@ -828,3 +828,135 @@ footer {
   font-size: 0.8rem;
   color: var(--muted);
 }
+/* ================= DEBUG TERMINAL ================= */
+.debug-terminal {
+  margin-top: 30px;
+  border-radius: 12px;
+  background: #0d0f14;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.terminal-header {
+  background: #1a1d27;
+  padding: 8px 15px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.terminal-body {
+  padding: 15px;
+  height: 250px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+  color: #a78bfa;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.terminal-body .log-entry {
+  word-break: break-all;
+}
+
+.terminal-body .log-entry.success {
+  color: var(--success);
+}
+
+.terminal-body .log-entry.error {
+  color: #ef4444;
+}
+
+.terminal-body .log-entry.info {
+  color: var(--text);
+}
+/* ================= PLAYBACK ZONE (PHASE 7) ================= */
+.playback-zone {
+  margin-top: 35px;
+  padding: 30px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  text-align: center;
+}
+
+.qr-display-container {
+  display: inline-flex;
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  box-shadow: 0 0 40px rgba(139, 92, 246, 0.2);
+}
+
+.qr-display-container img {
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  image-rendering: pixelated;
+  /* Keeps QR sharp */
+}
+
+.playback-metrics {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 0 10px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.playback-metrics .metric {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+}
+
+.playback-metrics strong {
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
+.success-text {
+  color: var(--success) !important;
+}
+
+.playback-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.control-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent-light);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  background: rgba(139, 92, 246, 0.3);
+  color: #fff;
+}
+
+.control-btn.danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.control-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fff;
+}
