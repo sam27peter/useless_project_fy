@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Useless Project 3.0 — Receiver</title>
+
+    <link rel="stylesheet" href="receiver.css">
+</head>
+
+<body>
+
+    <main class="receiver-app">
+
+        <header class="header">
+            <h1>Useless Project 3.0</h1>
+            <p>QR File Receiver</p>
+        </header>
+
+
+        <!-- Connection -->
+
+        <section class="card">
+
+            <h2>Receiver Connection</h2>
+
+            <div class="connection-row">
+
+                <input id="serverUrl" type="url" placeholder="http://192.168.x.x:8000" autocomplete="off">
+
+                <button id="connectButton">
+                    Connect
+                </button>
+
+            </div>
+
+            <p id="connectionStatus" class="status disconnected">
+                Not connected
+            </p>
+
+        </section>
+
+
+        <!-- Camera -->
+
+        <section class="card">
+
+            <h2>QR Scanner</h2>
+
+            <div id="cameraContainer" class="camera-container">
+
+                <video id="camera" autoplay playsinline muted></video>
+
+                <div class="scan-overlay">
+
+                    <div class="scan-box"></div>
+
+                </div>
+
+                <div id="cameraMessage" class="camera-message">
+                    Camera not started
+                </div>
+
+            </div>
+
+
+            <div class="button-row">
+
+                <button id="startCameraButton" class="primary">
+                    Start Camera
+                </button>
+
+                <button id="stopCameraButton" disabled>
+                    Stop Camera
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- Transfer status -->
+
+        <section class="card">
+
+            <h2>Transfer Status</h2>
+
+            <div class="status-grid">
+
+                <div class="status-item">
+                    <span>Session</span>
+                    <strong id="sessionId">—</strong>
+                </div>
+
+                <div class="status-item">
+                    <span>File</span>
+                    <strong id="fileName">—</strong>
+                </div>
+
+                <div class="status-item">
+                    <span>Frames</span>
+                    <strong id="frameCount">0 / 0</strong>
+                </div>
+
+                <div class="status-item">
+                    <span>Duplicates</span>
+                    <strong id="duplicateCount">0</strong>
+                </div>
+
+            </div>
+
+
+            <div class="progress-container">
+
+                <div class="progress-bar">
+
+                    <div id="progress" class="progress" style="width: 0%"></div>
+
+                </div>
+
+                <span id="progressText">
+                    0%
+                </span>
+
+            </div>
+
+
+            <p id="transferStatus" class="status waiting">
+                Waiting for transmission
+            </p>
+
+        </section>
+
+
+        <!-- Result -->
+
+        <section id="resultCard" class="card result-card hidden">
+
+            <h2>Transfer Complete</h2>
+
+            <div class="result">
+
+                <p>
+                    <span>File:</span>
+                    <strong id="resultFileName">—</strong>
+                </p>
+
+                <p>
+                    <span>Verification:</span>
+                    <strong id="verificationStatus">
+                        —
+                    </strong>
+                </p>
+
+            </div>
+
+            <a id="downloadButton" class="download-button" href="#" download>
+                Download File
+            </a>
+
+        </section>
+
+
+        <!-- Controls -->
+
+        <section class="controls">
+
+            <button id="resetButton" class="danger">
+                Reset Receiver
+            </button>
+
+        </section>
+
+
+        <!-- Error -->
+
+        <div id="errorMessage" class="error hidden"></div>
+
+    </main>
+
+
+    <script src="receiver.js"></script>
+
+</body>
+
+</html>
