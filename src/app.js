@@ -144,7 +144,7 @@ prepareButton.addEventListener("click", async () => {
         
         // REDUCED TO 8 BLOCKS PER FRAME TO ENSURE NO OVERFLOW CRASHES
         const packingInfo = await BlockPacker.pack(
-            preparedFile.preparedBytes, codingEngine, 230, 8, 
+            preparedFile.preparedBytes, codingEngine, 230, 2, 
             (progress) => {
                 statusText.textContent = `Running Phase 4 (RS Packing)... ${Math.floor(progress * 100)}%`;
             }
