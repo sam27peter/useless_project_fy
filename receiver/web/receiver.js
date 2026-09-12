@@ -4,117 +4,146 @@
  * Receiver Web Interface
  * =========================================================
  *
- * Phone camera
+ * PHONE CAMERA
  *      ↓
- * jsQR
+ * ZXing QR DECODER
  *      ↓
- * RAW QR BINARY BYTES
+ * RAW QR BYTE SEGMENTS
  *      ↓
- * Python Receiver /frame
+ * POST /frame
+ *      ↓
+ * PYTHON RECEIVER
  *
- * IMPORTANT:
- * The Sender uses QR byte mode.
- * We MUST use result.binaryData from jsQR.
- * Do NOT convert result.data back to bytes.
+ * The Sender is NOT modified.
  * =========================================================
  */
 
 
 /* ---------------------------------------------------------
-   QR decoder
+   ZXing
    --------------------------------------------------------- */
 
-const JSQR_URL =
-    "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+const ZXING_URL =
+    "https://unpkg.com/@zxing/browser@latest";
+
+
+let zxingLoaded = false;
+
+let codeReader = null;
+
+let scannerControls = null;
 
 
 /* ---------------------------------------------------------
    DOM
    --------------------------------------------------------- */
 
+const connectionStatus =
+    document.getElementById(
+        "connectionStatus"
+    );
+
 const camera =
-    document.getElementById("camera");
+    document.getElementById(
+        "camera"
+    );
 
 const cameraMessage =
-    document.getElementById("cameraMessage");
+    document.getElementById(
+        "cameraMessage"
+    );
 
 const startCameraButton =
-    document.getElementById("startCameraButton");
+    document.getElementById(
+        "startCameraButton"
+    );
 
 const stopCameraButton =
-    document.getElementById("stopCameraButton");
+    document.getElementById(
+        "stopCameraButton"
+    );
 
 const resetButton =
-    document.getElementById("resetButton");
-
-const connectionStatus =
-    document.getElementById("connectionStatus");
+    document.getElementById(
+        "resetButton"
+    );
 
 const sessionIdElement =
-    document.getElementById("sessionId");
+    document.getElementById(
+        "sessionId"
+    );
 
 const fileNameElement =
-    document.getElementById("fileName");
+    document.getElementById(
+        "fileName"
+    );
 
 const frameCountElement =
-    document.getElementById("frameCount");
+    document.getElementById(
+        "frameCount"
+    );
 
 const duplicateCountElement =
-    document.getElementById("duplicateCount");
+    document.getElementById(
+        "duplicateCount"
+    );
 
 const progressElement =
-    document.getElementById("progress");
+    document.getElementById(
+        "progress"
+    );
 
 const progressText =
-    document.getElementById("progressText");
+    document.getElementById(
+        "progressText"
+    );
 
 const transferStatus =
-    document.getElementById("transferStatus");
+    document.getElementById(
+        "transferStatus"
+    );
 
 const resultCard =
-    document.getElementById("resultCard");
+    document.getElementById(
+        "resultCard"
+    );
 
 const resultFileName =
-    document.getElementById("resultFileName");
+    document.getElementById(
+        "resultFileName"
+    );
 
 const verificationStatus =
-    document.getElementById("verificationStatus");
+    document.getElementById(
+        "verificationStatus"
+    );
 
 const downloadButton =
-    document.getElementById("downloadButton");
+    document.getElementById(
+        "downloadButton"
+    );
 
 const errorMessage =
-    document.getElementById("errorMessage");
+    document.getElementById(
+        "errorMessage"
+    );
 
 
 /* ---------------------------------------------------------
    State
    --------------------------------------------------------- */
 
-let stream = null;
-
 let scanning = false;
-
-let scanAnimationFrame = null;
-
-let jsQRLoaded = false;
-
-let canvas = null;
-
-let canvasContext = null;
 
 let lastPayloadKey = null;
 
 let lastPayloadTime = 0;
 
-let statusTimer = null;
-
 
 /*
- * Same QR frame can remain visible for many camera frames.
- * Do not POST the exact same payload repeatedly.
+ * The same QR may remain in front of the camera
+ * for multiple camera frames.
  */
-
 const DUPLICATE_SCAN_INTERVAL = 350;
 
 
@@ -123,16 +152,14 @@ const DUPLICATE_SCAN_INTERVAL = 350;
    --------------------------------------------------------- */
 
 /*
- * The Receiver webpage and Receiver API are now hosted
- * by the SAME Render service.
+ * The webpage and Python API are hosted by the
+ * same Render service.
  *
- * Therefore we do not need:
+ * Example:
  *
- *   http://192.168.x.x:8000
+ * https://useless-project-receiver.onrender.com
  *
- * or a manual connection box.
- *
- * The API is simply the current website origin.
+ * Therefore we simply use the current origin.
  */
 
 function getServerUrl() {
@@ -256,22 +283,46 @@ function updateProgress(
 
 
 /* ---------------------------------------------------------
-   Load jsQR
+   Load ZXing
    --------------------------------------------------------- */
 
-function loadJsQR() {
+async function loadZXing() {
 
-    return new Promise(
+    if (zxingLoaded) {
+        return;
+    }
+
+    if (
+        window.ZXingBrowser &&
+        window.ZXingBrowser.BrowserQRCodeReader
+    ) {
+
+        zxingLoaded = true;
+
+        return;
+    }
+
+    await new Promise(
         (resolve, reject) => {
 
-            if (
-                typeof window.jsQR ===
-                "function"
-            ) {
+            const existingScript =
+                document.querySelector(
+                    'script[data-zxing="true"]'
+                );
 
-                jsQRLoaded = true;
+            if (existingScript) {
 
-                resolve();
+                existingScript.addEventListener(
+                    "load",
+                    resolve,
+                    { once: true }
+                );
+
+                existingScript.addEventListener(
+                    "error",
+                    reject,
+                    { once: true }
+                );
 
                 return;
             }
@@ -282,40 +333,23 @@ function loadJsQR() {
                 );
 
             script.src =
-                JSQR_URL;
+                ZXING_URL;
 
             script.async =
                 true;
 
+            script.dataset.zxing =
+                "true";
+
             script.onload =
-                () => {
-
-                    if (
-                        typeof window.jsQR !==
-                        "function"
-                    ) {
-
-                        reject(
-                            new Error(
-                                "jsQR loaded but is unavailable."
-                            )
-                        );
-
-                        return;
-                    }
-
-                    jsQRLoaded =
-                        true;
-
-                    resolve();
-                };
+                resolve;
 
             script.onerror =
                 () => {
 
                     reject(
                         new Error(
-                            "Unable to load jsQR."
+                            "Unable to load ZXing QR decoder."
                         )
                     );
                 };
@@ -325,6 +359,18 @@ function loadJsQR() {
             );
         }
     );
+
+    if (
+        !window.ZXingBrowser ||
+        !window.ZXingBrowser.BrowserQRCodeReader
+    ) {
+
+        throw new Error(
+            "ZXing loaded, but BrowserQRCodeReader is unavailable."
+        );
+    }
+
+    zxingLoaded = true;
 }
 
 
@@ -342,66 +388,63 @@ async function startCamera() {
 
     try {
 
-        await loadJsQR();
+        await loadZXing();
 
         cameraMessage.textContent =
-            "Requesting camera permission...";
+            "Starting camera...";
 
-        stream =
-            await navigator.mediaDevices
-                .getUserMedia(
+        /*
+         * ZXing handles the camera stream itself.
+         *
+         * The browser receives the camera permission
+         * request here.
+         */
+
+        codeReader =
+            new window.ZXingBrowser
+                .BrowserQRCodeReader();
+
+        /*
+         * Stop any previous scanner.
+         */
+
+        if (scannerControls) {
+
+            scannerControls.stop();
+
+            scannerControls =
+                null;
+        }
+
+        /*
+         * Start continuous QR decoding.
+         *
+         * Passing null lets ZXing choose an available
+         * camera while preferring the environment camera.
+         */
+
+        scannerControls =
+            await codeReader
+                .decodeFromConstraints(
                     {
                         video: {
                             facingMode: {
                                 ideal: "environment"
                             },
-
                             width: {
                                 ideal: 1920
                             },
-
                             height: {
                                 ideal: 1080
                             }
                         },
-
                         audio: false
-                    }
+                    },
+                    camera,
+                    handleZXingResult
                 );
 
-        camera.srcObject =
-            stream;
-
-        await camera.play();
-
-        /*
-         * Wait until the browser has actual
-         * camera dimensions.
-         */
-
-        await waitForVideoReady();
-
-        canvas =
-            document.createElement(
-                "canvas"
-            );
-
-        canvas.width =
-            camera.videoWidth;
-
-        canvas.height =
-            camera.videoHeight;
-
-        canvasContext =
-            canvas.getContext(
-                "2d",
-                {
-                    willReadFrequently: true
-                }
-            );
-
-        scanning =
-            true;
+        scanning = true;
 
         startCameraButton.disabled =
             true;
@@ -409,34 +452,27 @@ async function startCamera() {
         stopCameraButton.disabled =
             false;
 
-        cameraMessage.textContent =
-            "Scanning for QR codes...";
-
         setConnectionStatus(
             "Receiver ready",
             true
         );
 
         setTransferStatus(
-            "Scanning...",
+            "Scanning for QR...",
             "receiving"
         );
 
-        /*
-         * Automatically verify that the Render
-         * Receiver backend is reachable.
-         */
-
-        checkReceiver();
-
-        scanLoop();
+        cameraMessage.textContent =
+            "Scanning for QR codes...";
 
     } catch (error) {
 
         stopCamera();
 
         showError(
-            getCameraErrorMessage(error)
+            getCameraErrorMessage(
+                error
+            )
         );
 
         cameraMessage.textContent =
@@ -446,361 +482,96 @@ async function startCamera() {
 
 
 /* ---------------------------------------------------------
-   Wait for video
+   ZXing result callback
    --------------------------------------------------------- */
 
-function waitForVideoReady() {
+function handleZXingResult(
+    result,
+    error
+) {
 
-    return new Promise(
-        (resolve, reject) => {
+    if (!scanning && scannerControls) {
+        /*
+         * The first callback may happen immediately
+         * while the scanner is being initialized.
+         *
+         * Allow it.
+         */
+    }
 
-            if (
-                camera.videoWidth > 0 &&
-                camera.videoHeight > 0
-            ) {
+    /*
+     * No QR found in this camera frame.
+     *
+     * ZXing reports this frequently while scanning.
+     * Do not show it as an error.
+     */
 
-                resolve();
-
-                return;
-            }
-
-            const timeout =
-                window.setTimeout(
-                    () => {
-
-                        reject(
-                            new Error(
-                                "Camera video did not become ready."
-                            )
-                        );
-
-                    },
-                    5000
-                );
-
-            camera.onloadedmetadata =
-                () => {
-
-                    window.clearTimeout(
-                        timeout
-                    );
-
-                    resolve();
-                };
-        }
-    );
-}
-
-
-/* ---------------------------------------------------------
-   Receiver health check
-   --------------------------------------------------------- */
-
-async function checkReceiver() {
+    if (!result) {
+        return;
+    }
 
     try {
 
-        const response =
-            await fetch(
-                `${getServerUrl()}/status`,
-                {
-                    method: "GET",
-                    cache: "no-store"
-                }
+        const bytes =
+            qrResultToBytes(
+                result
             );
 
-        if (!response.ok) {
-
-            throw new Error(
-                `HTTP ${response.status}`
-            );
-        }
-
-        const status =
-            await response.json();
-
-        setConnectionStatus(
-            "Receiver connected",
-            true
-        );
-
-        applyStatus(
-            status
-        );
-
-        startStatusPolling();
-
-    } catch (error) {
-
-        setConnectionStatus(
-            "Receiver unavailable",
-            false
-        );
-
-        showError(
-            `Receiver connection failed: ${error.message}`
-        );
-    }
-}
-
-
-/* ---------------------------------------------------------
-   Camera errors
-   --------------------------------------------------------- */
-
-function getCameraErrorMessage(error) {
-
-    if (!error) {
-
-        return (
-            "Unable to start the camera."
-        );
-    }
-
-    if (
-        error.name ===
-        "NotAllowedError"
-    ) {
-
-        return (
-            "Camera permission was denied. "
-            + "Allow camera access and try again."
-        );
-    }
-
-    if (
-        error.name ===
-        "NotFoundError"
-    ) {
-
-        return (
-            "No camera was found."
-        );
-    }
-
-    if (
-        error.name ===
-        "NotReadableError"
-    ) {
-
-        return (
-            "The camera is already being used "
-            + "by another application."
-        );
-    }
-
-    if (
-        error.name ===
-        "SecurityError"
-    ) {
-
-        return (
-            "Camera access requires HTTPS."
-        );
-    }
-
-    return (
-        `Camera error: ${error.message || error.name}`
-    );
-}
-
-
-/* ---------------------------------------------------------
-   Stop camera
-   --------------------------------------------------------- */
-
-function stopCamera() {
-
-    scanning =
-        false;
-
-    if (
-        scanAnimationFrame !== null
-    ) {
-
-        cancelAnimationFrame(
-            scanAnimationFrame
-        );
-
-        scanAnimationFrame =
-            null;
-    }
-
-    if (stream) {
-
-        for (
-            const track
-            of stream.getTracks()
+        if (
+            !bytes ||
+            bytes.length === 0
         ) {
 
-            track.stop();
+            cameraMessage.textContent =
+                "QR detected, but no binary payload found.";
+
+            return;
         }
 
-        stream =
-            null;
-    }
+        /*
+         * Protocol V1:
+         *
+         * 0x00 = METADATA
+         * 0x01 = DATA
+         * 0x02 = END
+         */
 
-    if (camera) {
+        const frameType =
+            bytes[0];
 
-        camera.srcObject =
-            null;
-    }
+        if (
+            frameType !== 0x00 &&
+            frameType !== 0x01 &&
+            frameType !== 0x02
+        ) {
 
-    if (startCameraButton) {
+            cameraMessage.textContent =
+                `QR decoded (${bytes.length} bytes), `
+                + "unknown protocol frame.";
 
-        startCameraButton.disabled =
-            false;
-    }
-
-    if (stopCameraButton) {
-
-        stopCameraButton.disabled =
-            true;
-    }
-
-    if (cameraMessage) {
+            return;
+        }
 
         cameraMessage.textContent =
-            "Camera stopped";
-    }
-}
+            `QR FOUND — ${bytes.length} bytes`;
 
-
-/* ---------------------------------------------------------
-   QR scanning
-   --------------------------------------------------------- */
-
-function scanLoop() {
-
-    if (!scanning) {
-        return;
-    }
-
-    if (
-        !camera.videoWidth ||
-        !camera.videoHeight
-    ) {
-
-        scanAnimationFrame =
-            requestAnimationFrame(
-                scanLoop
-            );
-
-        return;
-    }
-
-    if (
-        !canvas ||
-        !canvasContext
-    ) {
-
-        canvas =
-            document.createElement(
-                "canvas"
-            );
-
-        canvas.width =
-            camera.videoWidth;
-
-        canvas.height =
-            camera.videoHeight;
-
-        canvasContext =
-            canvas.getContext(
-                "2d",
-                {
-                    willReadFrequently: true
-                }
-            );
-    }
-
-    canvasContext.drawImage(
-        camera,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    const imageData =
-        canvasContext.getImageData(
-            0,
-            0,
-            canvas.width,
-            canvas.height
+        handleQRCodeBytes(
+            bytes
         );
 
-    let result =
-        null;
-
-    try {
-
-        result =
-            window.jsQR(
-                imageData.data,
-                imageData.width,
-                imageData.height,
-                {
-                    /*
-                     * Sender QR is black on white.
-                     * dontInvert is faster and avoids
-                     * wasting processing on inverted frames.
-                     */
-
-                    inversionAttempts:
-                        "dontInvert"
-                }
-            );
-
-    } catch (error) {
+    } catch (decodeError) {
 
         console.error(
-            "jsQR scan error:",
-            error
+            "QR result processing error:",
+            decodeError
         );
     }
-
-    if (result) {
-
-        handleQRCode(
-            result
-        );
-    }
-
-    scanAnimationFrame =
-        requestAnimationFrame(
-            scanLoop
-        );
 }
 
 
 /* ---------------------------------------------------------
-   RAW QR BYTE EXTRACTION
+   Extract original QR byte payload
    --------------------------------------------------------- */
-
-/*
- * THIS IS THE IMPORTANT FIX.
- *
- * Sender:
- *
- *   Uint8Array
- *       ↓
- *   QR byte mode
- *
- * jsQR:
- *
- *   QR image
- *       ↓
- *   binaryData
- *
- * Therefore:
- *
- *   result.binaryData
- *
- * is used directly.
- *
- * We do NOT use result.data.
- */
 
 function qrResultToBytes(result) {
 
@@ -808,45 +579,103 @@ function qrResultToBytes(result) {
         return null;
     }
 
-    if (
-        result.binaryData &&
-        result.binaryData.length > 0
-    ) {
-
-        return new Uint8Array(
-            result.binaryData
-        );
-    }
-
     /*
-     * Fallback for unusual decoder builds.
+     * ZXing stores QR BYTE mode segments in
+     * ResultMetadataType.BYTE_SEGMENTS.
      *
-     * This should not normally be needed.
+     * The Sender explicitly uses QR byte mode,
+     * so these are the bytes we need.
      */
 
     if (
-        typeof result.data ===
-        "string" &&
-        result.data.length > 0
+        typeof result.getResultMetadata ===
+        "function"
     ) {
 
-        const bytes =
-            new Uint8Array(
-                result.data.length
-            );
+        const metadata =
+            result.getResultMetadata();
 
-        for (
-            let i = 0;
-            i < result.data.length;
-            i++
-        ) {
+        if (metadata) {
 
-            bytes[i] =
-                result.data.charCodeAt(i) &
-                0xff;
+            /*
+             * ResultMetadataType.BYTE_SEGMENTS
+             * is enum value 2 in ZXing.
+             */
+
+            let segments = null;
+
+            if (
+                typeof metadata.get ===
+                "function"
+            ) {
+
+                segments =
+                    metadata.get(2);
+
+            } else if (
+                metadata instanceof Map
+            ) {
+
+                segments =
+                    metadata.get(2);
+
+            } else if (
+                metadata[2]
+            ) {
+
+                segments =
+                    metadata[2];
+            }
+
+            if (
+                Array.isArray(
+                    segments
+                ) &&
+                segments.length > 0
+            ) {
+
+                return combineByteSegments(
+                    segments
+                );
+            }
         }
+    }
 
-        return bytes;
+    /*
+     * Some ZXing builds expose raw bytes directly.
+     *
+     * Keep this as a fallback.
+     */
+
+    if (
+        typeof result.getRawBytes ===
+        "function"
+    ) {
+
+        const raw =
+            result.getRawBytes();
+
+        if (raw && raw.length > 0) {
+
+            return new Uint8Array(
+                raw
+            );
+        }
+    }
+
+    /*
+     * Older builds may expose rawBytes
+     * as a property.
+     */
+
+    if (
+        result.rawBytes &&
+        result.rawBytes.length > 0
+    ) {
+
+        return new Uint8Array(
+            result.rawBytes
+        );
     }
 
     return null;
@@ -854,84 +683,81 @@ function qrResultToBytes(result) {
 
 
 /* ---------------------------------------------------------
-   Payload fingerprint
+   Combine QR byte segments
    --------------------------------------------------------- */
 
-function payloadFingerprint(bytes) {
+function combineByteSegments(
+    segments
+) {
 
-    let hash =
-        2166136261;
+    let totalLength = 0;
 
     for (
-        let i = 0;
-        i < bytes.length;
-        i++
+        const segment
+        of segments
     ) {
 
-        hash ^=
-            bytes[i];
+        if (
+            segment &&
+            segment.length
+        ) {
 
-        hash +=
-            (hash << 1) +
-            (hash << 4) +
-            (hash << 7) +
-            (hash << 8) +
-            (hash << 24);
+            totalLength +=
+                segment.length;
+        }
     }
 
-    return (
-        hash >>> 0
-    ).toString(16);
+    if (totalLength === 0) {
+        return null;
+    }
+
+    const combined =
+        new Uint8Array(
+            totalLength
+        );
+
+    let offset = 0;
+
+    for (
+        const segment
+        of segments
+    ) {
+
+        if (
+            !segment ||
+            !segment.length
+        ) {
+
+            continue;
+        }
+
+        const bytes =
+            segment instanceof Uint8Array
+                ? segment
+                : new Uint8Array(
+                    segment
+                );
+
+        combined.set(
+            bytes,
+            offset
+        );
+
+        offset +=
+            bytes.length;
+    }
+
+    return combined;
 }
 
 
 /* ---------------------------------------------------------
-   Process decoded QR
+   Process QR bytes
    --------------------------------------------------------- */
 
-async function handleQRCode(result) {
-
-    const bytes =
-        qrResultToBytes(
-            result
-        );
-
-    if (
-        !bytes ||
-        bytes.length === 0
-    ) {
-
-        return;
-    }
-
-    /*
-     * Useful diagnostic.
-     *
-     * Protocol V1:
-     *
-     * 0x00 = METADATA
-     * 0x01 = DATA
-     * 0x02 = END
-     */
-
-    const frameType =
-        bytes[0];
-
-    if (
-        frameType !== 0x00 &&
-        frameType !== 0x01 &&
-        frameType !== 0x02
-    ) {
-
-        console.warn(
-            "QR decoded, but unknown protocol byte:",
-            frameType,
-            "length:",
-            bytes.length
-        );
-
-        return;
-    }
+function handleQRCodeBytes(
+    bytes
+) {
 
     const fingerprint =
         payloadFingerprint(
@@ -941,9 +767,12 @@ async function handleQRCode(result) {
     const now =
         performance.now();
 
+    /*
+     * Do not repeatedly POST the same visible QR.
+     */
+
     if (
-        fingerprint ===
-            lastPayloadKey &&
+        fingerprint === lastPayloadKey &&
         now - lastPayloadTime <
             DUPLICATE_SCAN_INTERVAL
     ) {
@@ -957,12 +786,41 @@ async function handleQRCode(result) {
     lastPayloadTime =
         now;
 
-    cameraMessage.textContent =
-        `QR detected — frame ${bytes.length} bytes`;
-
-    await sendFrame(
+    sendFrame(
         bytes
     );
+}
+
+
+/* ---------------------------------------------------------
+   Payload fingerprint
+   --------------------------------------------------------- */
+
+function payloadFingerprint(
+    bytes
+) {
+
+    let hash =
+        2166136261;
+
+    for (
+        let i = 0;
+        i < bytes.length;
+        i++
+    ) {
+
+        hash ^= bytes[i];
+
+        hash =
+            Math.imul(
+                hash,
+                16777619
+            );
+    }
+
+    return (
+        hash >>> 0
+    ).toString(16);
 }
 
 
@@ -970,7 +828,9 @@ async function handleQRCode(result) {
    Send frame to Python Receiver
    --------------------------------------------------------- */
 
-async function sendFrame(bytes) {
+async function sendFrame(
+    bytes
+) {
 
     try {
 
@@ -1007,25 +867,32 @@ async function sendFrame(bytes) {
         );
 
         cameraMessage.textContent =
-            "QR frame received";
+            `FRAME RECEIVED — ${bytes.length} bytes`;
 
     } catch (error) {
+
+        console.error(
+            "Frame send failed:",
+            error
+        );
 
         showError(
             `Frame send failed: ${error.message}`
         );
 
         cameraMessage.textContent =
-            "Frame transmission error";
+            "QR decoded, but frame could not be sent.";
     }
 }
 
 
 /* ---------------------------------------------------------
-   Frame result
+   Apply server frame result
    --------------------------------------------------------- */
 
-function applyFrameResult(result) {
+function applyFrameResult(
+    result
+) {
 
     if (!result) {
         return;
@@ -1037,10 +904,12 @@ function applyFrameResult(result) {
     ) {
 
         sessionIdElement.textContent =
-            result.session_id ?? "—";
+            result.session_id ??
+            "—";
 
         fileNameElement.textContent =
-            result.filename ?? "—";
+            result.filename ??
+            "—";
 
         updateProgress(
             0,
@@ -1079,7 +948,8 @@ function applyFrameResult(result) {
         );
 
         duplicateCountElement.textContent =
-            result.duplicate_frames ?? 0;
+            result.duplicate_frames ??
+            0;
 
         setTransferStatus(
             result.complete
@@ -1093,8 +963,7 @@ function applyFrameResult(result) {
 
 
     if (
-        result.type ===
-            "END" &&
+        result.type === "END" &&
         result.complete
     ) {
 
@@ -1106,10 +975,50 @@ function applyFrameResult(result) {
 
 
 /* ---------------------------------------------------------
-   Status
+   Status polling
    --------------------------------------------------------- */
 
-function applyStatus(status) {
+async function refreshStatus() {
+
+    try {
+
+        const response =
+            await fetch(
+                `${getServerUrl()}/status`,
+                {
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok) {
+            return;
+        }
+
+        const status =
+            await response.json();
+
+        applyStatus(
+            status
+        );
+
+    } catch (error) {
+
+        /*
+         * Do not spam the UI while the server
+         * is temporarily unavailable.
+         */
+
+        console.warn(
+            "Status request failed:",
+            error
+        );
+    }
+}
+
+
+function applyStatus(
+    status
+) {
 
     if (!status) {
         return;
@@ -1118,8 +1027,7 @@ function applyStatus(status) {
     if (
         status.session_id !==
             undefined &&
-        status.session_id !==
-            null
+        status.session_id !== null
     ) {
 
         sessionIdElement.textContent =
@@ -1138,11 +1046,10 @@ function applyStatus(status) {
     );
 
     duplicateCountElement.textContent =
-        status.duplicate_frames ?? 0;
+        status.duplicate_frames ??
+        0;
 
-    if (
-        status.completed
-    ) {
+    if (status.completed) {
 
         showCompletion(
             status
@@ -1164,7 +1071,9 @@ function applyStatus(status) {
    Completion
    --------------------------------------------------------- */
 
-function showCompletion(result) {
+function showCompletion(
+    result
+) {
 
     if (resultCard) {
 
@@ -1176,9 +1085,9 @@ function showCompletion(result) {
     if (resultFileName) {
 
         resultFileName.textContent =
-            result.filename ||
-            fileNameElement.textContent ||
-            "received_file";
+            result.filename
+            || fileNameElement.textContent
+            || "received_file";
     }
 
     if (verificationStatus) {
@@ -1199,8 +1108,8 @@ function showCompletion(result) {
     );
 
     /*
-     * Download endpoint will be enabled
-     * in the next Receiver step.
+     * Download support will be connected once
+     * the Receiver API exposes the generated file.
      */
 
     if (downloadButton) {
@@ -1213,68 +1122,135 @@ function showCompletion(result) {
 
 
 /* ---------------------------------------------------------
-   Status polling
+   Camera error messages
    --------------------------------------------------------- */
 
-function startStatusPolling() {
+function getCameraErrorMessage(
+    error
+) {
 
-    if (
-        statusTimer !== null
-    ) {
+    if (!error) {
 
-        return;
+        return (
+            "Unable to start the camera."
+        );
     }
 
-    statusTimer =
-        window.setInterval(
-            refreshStatus,
-            1000
+    if (
+        error.name ===
+        "NotAllowedError"
+    ) {
+
+        return (
+            "Camera permission was denied. "
+            + "Allow camera access and try again."
         );
+    }
+
+    if (
+        error.name ===
+        "NotFoundError"
+    ) {
+
+        return (
+            "No camera was found on this device."
+        );
+    }
+
+    if (
+        error.name ===
+        "NotReadableError"
+    ) {
+
+        return (
+            "The camera is already being used "
+            + "by another application."
+        );
+    }
+
+    if (
+        error.name ===
+        "SecurityError"
+    ) {
+
+        return (
+            "Camera access requires HTTPS."
+        );
+    }
+
+    return (
+        `Camera error: ${
+            error.message ||
+            error.name ||
+            "unknown error"
+        }`
+    );
 }
 
 
-async function refreshStatus() {
+/* ---------------------------------------------------------
+   Stop camera
+   --------------------------------------------------------- */
 
-    try {
+function stopCamera() {
 
-        const response =
-            await fetch(
-                `${getServerUrl()}/status`,
-                {
-                    method: "GET",
-                    cache: "no-store"
-                }
+    scanning = false;
+
+    if (scannerControls) {
+
+        try {
+
+            scannerControls.stop();
+
+        } catch (error) {
+
+            console.warn(
+                "Scanner stop error:",
+                error
             );
-
-        if (!response.ok) {
-
-            return;
         }
 
-        const status =
-            await response.json();
+        scannerControls =
+            null;
+    }
 
-        applyStatus(
-            status
-        );
+    if (codeReader) {
 
-        setConnectionStatus(
-            "Receiver connected",
-            true
-        );
+        try {
 
-    } catch {
+            if (
+                typeof codeReader.reset ===
+                "function"
+            ) {
 
-        setConnectionStatus(
-            "Receiver unavailable",
-            false
-        );
+                codeReader.reset();
+            }
+
+        } catch (error) {
+
+            console.warn(
+                "ZXing reset error:",
+                error
+            );
+        }
+    }
+
+    startCameraButton.disabled =
+        false;
+
+    stopCameraButton.disabled =
+        true;
+
+    if (cameraMessage) {
+
+        cameraMessage.textContent =
+            "Camera stopped";
     }
 }
 
 
 /* ---------------------------------------------------------
-   Reset
+   Reset Receiver
    --------------------------------------------------------- */
 
 async function resetReceiver() {
@@ -1283,11 +1259,14 @@ async function resetReceiver() {
 
     try {
 
+        stopCamera();
+
         const response =
             await fetch(
                 `${getServerUrl()}/reset`,
                 {
-                    method: "POST"
+                    method: "POST",
+                    cache: "no-store"
                 }
             );
 
@@ -1302,43 +1281,62 @@ async function resetReceiver() {
             );
         }
 
-        sessionIdElement.textContent =
-            "—";
-
-        fileNameElement.textContent =
-            "—";
-
-        frameCountElement.textContent =
-            "0 / 0";
-
-        duplicateCountElement.textContent =
-            "0";
-
-        progressElement.style.width =
-            "0%";
-
-        progressText.textContent =
-            "0%";
-
-        resultCard.classList.add(
-            "hidden"
-        );
-
         lastPayloadKey =
             null;
 
         lastPayloadTime =
             0;
 
+        if (sessionIdElement) {
+
+            sessionIdElement.textContent =
+                "—";
+        }
+
+        if (fileNameElement) {
+
+            fileNameElement.textContent =
+                "—";
+        }
+
+        if (frameCountElement) {
+
+            frameCountElement.textContent =
+                "0 / 0";
+        }
+
+        if (duplicateCountElement) {
+
+            duplicateCountElement.textContent =
+                "0";
+        }
+
+        if (progressElement) {
+
+            progressElement.style.width =
+                "0%";
+        }
+
+        if (progressText) {
+
+            progressText.textContent =
+                "0%";
+        }
+
+        if (resultCard) {
+
+            resultCard.classList.add(
+                "hidden"
+            );
+        }
+
         setTransferStatus(
-            "Waiting for transmission",
+            "Ready",
             "waiting"
         );
 
         cameraMessage.textContent =
-            scanning
-                ? "Scanning for QR codes..."
-                : "Camera not started";
+            "Camera stopped";
 
     } catch (error) {
 
@@ -1350,38 +1348,67 @@ async function resetReceiver() {
 
 
 /* ---------------------------------------------------------
-   Events
+   Button events
    --------------------------------------------------------- */
 
-startCameraButton.addEventListener(
-    "click",
-    startCamera
-);
+if (startCameraButton) {
 
-stopCameraButton.addEventListener(
-    "click",
-    stopCamera
-);
+    startCameraButton.addEventListener(
+        "click",
+        startCamera
+    );
+}
 
-resetButton.addEventListener(
-    "click",
-    resetReceiver
-);
+
+if (stopCameraButton) {
+
+    stopCameraButton.addEventListener(
+        "click",
+        stopCamera
+    );
+}
+
+
+if (resetButton) {
+
+    resetButton.addEventListener(
+        "click",
+        resetReceiver
+    );
+}
 
 
 /* ---------------------------------------------------------
    Initial state
    --------------------------------------------------------- */
 
-setTransferStatus(
-    "Waiting for transmission",
-    "waiting"
-);
-
 setConnectionStatus(
     "Receiver ready",
     true
 );
 
-cameraMessage.textContent =
-    "Camera not started";
+setTransferStatus(
+    "Ready to scan",
+    "waiting"
+);
+
+if (stopCameraButton) {
+
+    stopCameraButton.disabled =
+        true;
+}
+
+
+/*
+ * Poll the Python receiver periodically.
+ *
+ * This keeps the UI synchronized even if a frame
+ * was processed immediately before a browser update.
+ */
+
+setInterval(
+    refreshStatus,
+    1000
+);
+
+refreshStatus();
